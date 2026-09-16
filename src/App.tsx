@@ -29,6 +29,7 @@ const MainAppContent: React.FC = () => {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddEnquiryOpen, setIsAddEnquiryOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
 
   if (!isAuthenticated) {
     return <SignInView />;
@@ -78,7 +79,11 @@ const MainAppContent: React.FC = () => {
       {/* Modals */}
       <AddMemberModal
         isOpen={isAddMemberOpen}
-        onClose={() => setIsAddMemberOpen(false)}
+        onClose={() => {
+          setIsAddMemberOpen(false);
+          setEditingMember(null);
+        }}
+        initialData={editingMember}
       />
 
       <MemberDetailModal
@@ -86,6 +91,7 @@ const MainAppContent: React.FC = () => {
         onClose={() => setSelectedMember(null)}
         onEdit={(mem) => {
           setSelectedMember(null);
+          setEditingMember(mem);
           setIsAddMemberOpen(true);
         }}
       />
