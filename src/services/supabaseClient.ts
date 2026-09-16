@@ -548,6 +548,17 @@ export async function fetchUsersFromSupabase(override?: { url: string; key: stri
 }
 
 export async function backupToSupabase(payload: BackupPayload, override?: { url: string; key: string }) {
+  const client = createCustomSupabaseClient(override?.url, override?.key);
+  if (client) {
+    const gymCode = payload.profile?.code || 'RK-GYM-DEFAULT';
+    await client.from('gym_backups').upsert({
+      id: gymCode,
+      gym_code: gymCode,
+      gym_name: payload.profile?.name || 'Gym',
+      payload: payload,
+      updated_at: new Date().toISOString()
+    });
+  }
   return backupRelationalTablesToSupabase(payload, override);
 }
 
