@@ -52,8 +52,24 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
       setAmountPaid(initialData.amountPaid);
       setNotes(initialData.notes || '');
       setGender(initialData.gender || 'Male');
+    } else if (isOpen) {
+      setName('');
+      setPhone('+91 ');
+      setEmail('');
+      setType('Paid');
+      const defaultPlan = availablePlans[0] || { id: 'plan_cardio', name: 'Cardio Fitness', monthlyPrice: 1400 };
+      setSelectedPlanId(defaultPlan.id);
+      setPlanName(defaultPlan.name);
+      setJoinDate(todayStr);
+      setDurationMonths(3);
+      setExpiryDate(defaultExpiryStr);
+      setPaymentMethod('Cash');
+      setAmountPaid(defaultPlan.pricesByDuration?.[3] || (defaultPlan.monthlyPrice * 3));
+      setNotes('');
+      setGender('Male');
     }
-  }, [initialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData, isOpen]);
 
   // Recalculate expiry & price when duration or plan changes
   const handleDurationChange = (months: number) => {

@@ -18,6 +18,18 @@ export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClos
   const [followUpDate, setFollowUpDate] = useState('');
   const [notes, setNotes] = useState('');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setPhone('+91 ');
+      setEmail('');
+      setPlanInterest('Cardio Fitness');
+      setSource('Walk-in');
+      setFollowUpDate('');
+      setNotes('');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {

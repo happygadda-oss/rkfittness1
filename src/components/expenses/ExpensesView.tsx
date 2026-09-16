@@ -197,8 +197,13 @@ export const ExpensesView: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-5 text-right">
                       <button
-                        onClick={() => deleteExpense(exp.id)}
+                        onClick={() => {
+                          if (window.confirm("Delete this expense (Created by mistake)?\n\nThis will remove the expense and update your total profit.")) {
+                            deleteExpense(exp.id);
+                          }
+                        }}
                         className="p-1.5 text-[#8e9db5] hover:text-rose-400"
+                        title="Delete (Created by mistake)"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

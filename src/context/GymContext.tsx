@@ -42,7 +42,7 @@ interface GymContextType {
   members: Member[];
   addMember: (memberData: Omit<Member, 'id'>) => void;
   updateMember: (id: string, updated: Partial<Member>) => void;
-  deleteMember: (id: string) => void;
+  deleteMember: (id: string, reversePayments?: boolean) => void;
   renewMember: (id: string, months: number, paymentMethod: Member['paymentMethod'], amount: number) => void;
   
   enquiries: Enquiry[];
@@ -312,9 +312,14 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const deleteMember = (id: string) => {
+  const deleteMember = (id: string, reversePayments: boolean = false) => {
     const mem = members.find((m) => m.id === id);
     setMembers((prev) => prev.filter((m) => m.id !== id));
+    
+    if (reversePayments) {
+      setPayments((prev) => prev.filter((p) => p.memberId !== id));
+    }
+    
     if (mem) {
       logActivity('expense', mem.name, `removed from directory`, 'expense');
     }

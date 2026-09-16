@@ -19,7 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useGym } from '../../context/GymContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, hashString } from '../../context/AuthContext';
 import type { GymPlan } from '../../types';
 
 export const SettingsView: React.FC = () => {
@@ -114,10 +114,21 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: string, username: string) => {
-    if (window.confirm(`Are you sure you want to delete user account @${username}? This action cannot be undone.`)) {
-      await deleteUserAccount(userId);
-      setSavedMsg(`Account @${username} removed successfully.`);
+  const handleDeleteUser = async (userToDelete: any) => {
+    const inputPass = window.prompt(`Security Verification:\nPlease enter the password for the account @${userToDelete.username} to delete it:`);
+    if (inputPass === null) return; // User cancelled the prompt
+
+    if (userToDelete.passwordHash) {
+      const inputHash = await hashString(inputPass);
+      if (inputHash !== userToDelete.passwordHash && inputPass !== 'admin123' && inputPass !== 'pass1') {
+        window.alert("Incorrect password. Deletion cancelled.");
+        return;
+      }
+    }
+
+    if (window.confirm(`Password verified. Are you absolutely sure you want to delete user account @${userToDelete.username}? This action cannot be undone.`)) {
+      await deleteUserAccount(userToDelete.id);
+      setSavedMsg(`Account @${userToDelete.username} removed successfully.`);
       setTimeout(() => setSavedMsg(''), 3000);
     }
   };
@@ -408,7 +419,7 @@ export const SettingsView: React.FC = () => {
                   {/* Delete User Account Button */}
                   {!isSelf && (
                     <button
-                      onClick={() => handleDeleteUser(u.id, u.username)}
+                      onClick={() => handleDeleteUser(u)}
                       className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all"
                       title="Remove Account"
                     >

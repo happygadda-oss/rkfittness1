@@ -33,6 +33,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   const [renewMethod, setRenewMethod] = useState<PaymentMethod>('Cash');
   const [renewAmount, setRenewAmount] = useState(4200);
   const [showRenewBox, setShowRenewBox] = useState(false);
+  const [showDeleteBox, setShowDeleteBox] = useState(false);
 
   if (!member) return null;
 
@@ -50,12 +51,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
     onClose();
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to remove ${member.name} from the gym directory?`)) {
-      deleteMember(member.id);
-      onClose();
-    }
-  };
+  // Delete handling moved inline into options
 
   const handleWhatsAppClick = () => {
     const cleanPhone = member.phone.replace(/[^0-9]/g, '');
@@ -184,7 +180,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
         )}
 
         {/* Actions Bar */}
-        {!showRenewBox ? (
+        {!showRenewBox && !showDeleteBox ? (
           <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#22324b]">
             <button
               onClick={() => onEdit(member)}
@@ -204,15 +200,15 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               </button>
 
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteBox(true)}
                 className="p-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/30 text-rose-400 transition-all"
-                title="Delete Member"
+                title="Delete Options"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
-        ) : (
+        ) : showRenewBox ? (
           <form onSubmit={handleRenewSubmit} className="p-4 bg-[#162032] rounded-2xl border border-[#0099ff]/50 space-y-3">
             <div className="text-xs font-bold text-white flex items-center gap-2">
               <RefreshCw className="w-4 h-4 text-[#0099ff]" />
@@ -281,6 +277,49 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               </button>
             </div>
           </form>
+        ) : (
+          <div className="p-4 bg-[#162032] rounded-2xl border border-rose-500/50 space-y-3">
+            <div className="text-xs font-bold text-white flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-500" />
+              <span>Delete Member Options</span>
+            </div>
+            
+            <p className="text-[11px] text-[#8e9db5]">
+              Choose how you want to remove this member:
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  deleteMember(member.id, true);
+                  onClose();
+                }}
+                className="px-4 py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 font-bold text-xs text-left"
+              >
+                1. Created by mistake (Reverses their payment)
+              </button>
+              
+              <button
+                onClick={() => {
+                  deleteMember(member.id, false);
+                  onClose();
+                }}
+                className="px-4 py-2 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 font-bold text-xs text-left"
+              >
+                2. Delete old/expired (Keeps past revenue)
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-1 border-t border-[#22324b]">
+              <button
+                type="button"
+                onClick={() => setShowDeleteBox(false)}
+                className="px-3 py-1.5 rounded-xl text-xs text-[#8e9db5] hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
