@@ -89,21 +89,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch {}
 
-      // 3. Restore session OR Auto-login to Admin Dashboard by default
-      const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
-      if (savedSession) {
-        try {
-          const parsed = JSON.parse(savedSession);
-          setUser(parsed);
-        } catch {
-          setUser(defaultAdmin);
-          localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(defaultAdmin));
-        }
-      } else {
-        // Auto-login to Admin Dashboard by default!
-        setUser(defaultAdmin);
-        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(defaultAdmin));
-      }
+      // 3. Require Login every time the app is opened or refreshed
+      setUser(null);
+      localStorage.removeItem(STORAGE_SESSION_KEY);
     };
 
     initAuth();
