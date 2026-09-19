@@ -41,11 +41,14 @@ export function sanitizeSupabaseUrl(inputUrl: string): string {
   return cleaned.replace(/\/+$/, '');
 }
 
+const DEFAULT_MASTER_URL = 'https://ysivilhdyryyhtprtmem.supabase.co';
+const DEFAULT_MASTER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaXZpbGhkeXJ5eWh0cHJ0bWVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzYwMTEsImV4cCI6MjEwNDgxMjAxMX0.X8TaF14JkSq2H7GmKmJCVijoqbpbcQ8j0-Cg7KrXeAc';
+
 export function getStoredSupabaseConfig(userPrefix?: string): SupabaseConfig {
   const prefix = userPrefix || '';
-  const rawUrl = localStorage.getItem(prefix + STORAGE_URL_KEY) || localStorage.getItem(STORAGE_URL_KEY) || import.meta.env.VITE_SUPABASE_URL || '';
+  const rawUrl = localStorage.getItem(prefix + STORAGE_URL_KEY) || localStorage.getItem(STORAGE_URL_KEY) || import.meta.env.VITE_SUPABASE_URL || DEFAULT_MASTER_URL;
   const url = sanitizeSupabaseUrl(rawUrl);
-  const key = (localStorage.getItem(prefix + STORAGE_ANON_KEY) || localStorage.getItem(STORAGE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const key = (localStorage.getItem(prefix + STORAGE_ANON_KEY) || localStorage.getItem(STORAGE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_MASTER_KEY).trim();
   const autoSync = true;
   const lastBackupTime = localStorage.getItem(prefix + STORAGE_LAST_BACKUP_KEY) || localStorage.getItem(STORAGE_LAST_BACKUP_KEY) || undefined;
 
