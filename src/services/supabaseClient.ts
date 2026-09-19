@@ -43,11 +43,11 @@ export function sanitizeSupabaseUrl(inputUrl: string): string {
 
 export function getStoredSupabaseConfig(userPrefix?: string): SupabaseConfig {
   const prefix = userPrefix || '';
-  const rawUrl = localStorage.getItem(prefix + STORAGE_URL_KEY) || (prefix ? '' : (localStorage.getItem(STORAGE_URL_KEY) || import.meta.env.VITE_SUPABASE_URL || ''));
+  const rawUrl = localStorage.getItem(prefix + STORAGE_URL_KEY) || localStorage.getItem(STORAGE_URL_KEY) || import.meta.env.VITE_SUPABASE_URL || '';
   const url = sanitizeSupabaseUrl(rawUrl);
-  const key = localStorage.getItem(prefix + STORAGE_ANON_KEY) || (prefix ? '' : (localStorage.getItem(STORAGE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || ''));
-  const autoSync = (localStorage.getItem(prefix + STORAGE_AUTO_SYNC_KEY) || (prefix ? 'false' : localStorage.getItem(STORAGE_AUTO_SYNC_KEY))) === 'true';
-  const lastBackupTime = localStorage.getItem(prefix + STORAGE_LAST_BACKUP_KEY) || (prefix ? undefined : (localStorage.getItem(STORAGE_LAST_BACKUP_KEY) || undefined));
+  const key = (localStorage.getItem(prefix + STORAGE_ANON_KEY) || localStorage.getItem(STORAGE_ANON_KEY) || import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const autoSync = true;
+  const lastBackupTime = localStorage.getItem(prefix + STORAGE_LAST_BACKUP_KEY) || localStorage.getItem(STORAGE_LAST_BACKUP_KEY) || undefined;
 
   return { url, key, autoSync, lastBackupTime };
 }
@@ -55,15 +55,19 @@ export function getStoredSupabaseConfig(userPrefix?: string): SupabaseConfig {
 export function saveSupabaseConfig(url: string, key: string, autoSync: boolean, userPrefix?: string) {
   const prefix = userPrefix || '';
   const sanitizedUrl = sanitizeSupabaseUrl(url);
+  const cleanKey = key.trim();
+
+  // Save to account-scoped keys
   if (prefix) {
     localStorage.setItem(prefix + STORAGE_URL_KEY, sanitizedUrl);
-    localStorage.setItem(prefix + STORAGE_ANON_KEY, key.trim());
+    localStorage.setItem(prefix + STORAGE_ANON_KEY, cleanKey);
     localStorage.setItem(prefix + STORAGE_AUTO_SYNC_KEY, String(autoSync));
-  } else {
-    localStorage.setItem(STORAGE_URL_KEY, sanitizedUrl);
-    localStorage.setItem(STORAGE_ANON_KEY, key.trim());
-    localStorage.setItem(STORAGE_AUTO_SYNC_KEY, String(autoSync));
   }
+
+  // Also save to global/root keys for universal fallback across logins
+  localStorage.setItem(STORAGE_URL_KEY, sanitizedUrl);
+  localStorage.setItem(STORAGE_ANON_KEY, cleanKey);
+  localStorage.setItem(STORAGE_AUTO_SYNC_KEY, String(autoSync));
 }
 
 export function createCustomSupabaseClient(url?: string, key?: string): SupabaseClient | null {
@@ -562,28 +566,195 @@ export async function backupToSupabase(payload: BackupPayload, override?: { url:
   return backupRelationalTablesToSupabase(payload, override);
 }
 
-export async function restoreFromSupabase(override?: { url: string; key: string }): Promise<{ success: boolean; data?: BackupPayload; error?: string }> {
+export async function fetchRelationalDataFromSupabase(gymCode?: string, override?: { url: string; key: string }): Promise<{ success: boolean; data?: Partial<BackupPayload>; error?: string }> {
   const client = createCustomSupabaseClient(override?.url, override?.key);
   if (!client) return { success: false, error: 'No Supabase credentials.' };
 
   try {
-    const { data, error } = await client
-      .from('gym_backups')
-      .select('*')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
+    const resultPayload: Partial<BackupPayload> = {};
 
-    if (error || !data) {
-      return { success: false, error: error?.message || 'No backup found in Supabase.' };
+    const fetchTableRows = async (tableName: string) => {
+      if (gymCode) {
+        const { data: matched } = await client.from(tableName).select('*').eq('gym_code', gymCode);
+        if (matched && matched.length > 0) return matched;
+      }
+      // Fallback: fetch all rows if specific gymCode query yields no results
+      const { data: allRows } = await client.from(tableName).select('*');
+      return allRows || [];
+    };
+
+    // 1. Members
+    const mData = await fetchTableRows('gym_members');
+    if (mData && mData.length > 0) {
+      resultPayload.members = mData.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        phone: m.phone,
+        email: m.email || '',
+        type: m.type,
+        plan: m.plan,
+        joinDate: m.join_date,
+        expiryDate: m.expiry_date,
+        paymentMethod: m.payment_method,
+        amountPaid: Number(m.amount_paid) || 0,
+        status: m.status,
+        appNumber: m.app_number || '',
+        notes: m.notes || '',
+        gender: m.gender || undefined
+      }));
     }
 
-    const payloadData = data.payload || data.snapshot_data;
+    // 2. Payments
+    const pData = await fetchTableRows('gym_payments');
+    if (pData && pData.length > 0) {
+      resultPayload.payments = pData.map((p: any) => ({
+        id: p.id,
+        memberId: p.member_id,
+        memberName: p.member_name,
+        amount: Number(p.amount) || 0,
+        plan: p.plan,
+        paymentMethod: p.payment_method,
+        date: p.payment_date || p.date,
+        formattedTime: p.formatted_time || ''
+      }));
+    }
+
+    // 3. Expenses
+    const eData = await fetchTableRows('gym_expenses');
+    if (eData && eData.length > 0) {
+      resultPayload.expenses = eData.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        category: e.category,
+        amount: Number(e.amount) || 0,
+        date: e.expense_date || e.date,
+        notes: e.notes || ''
+      }));
+    }
+
+    // 4. Enquiries
+    const eqData = await fetchTableRows('gym_enquiries');
+    if (eqData && eqData.length > 0) {
+      resultPayload.enquiries = eqData.map((eq: any) => ({
+        id: eq.id,
+        name: eq.name,
+        phone: eq.phone,
+        email: eq.email || '',
+        planInterest: eq.plan_interest,
+        source: eq.source,
+        status: eq.status,
+        createdAt: eq.created_at,
+        followUpDate: eq.follow_up_date || '',
+        notes: eq.notes || ''
+      }));
+    }
+
+    // 5. Staff
+    const sData = await fetchTableRows('gym_staff');
+    if (sData && sData.length > 0) {
+      resultPayload.staff = sData.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        role: s.role,
+        phone: s.phone,
+        email: s.email,
+        salary: Number(s.salary) || 0,
+        status: s.status,
+        joinDate: s.join_date
+      }));
+    }
+
+    return { success: true, data: resultPayload };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function restoreFromSupabase(
+  gymCodeOrOverride?: string | { url: string; key: string },
+  override?: { url: string; key: string }
+): Promise<{ success: boolean; data?: BackupPayload; error?: string }> {
+  let targetGymCode: string | undefined;
+  let targetOverride = override;
+
+  if (typeof gymCodeOrOverride === 'string') {
+    targetGymCode = gymCodeOrOverride;
+  } else if (gymCodeOrOverride && typeof gymCodeOrOverride === 'object') {
+    targetOverride = gymCodeOrOverride;
+  }
+
+  const client = createCustomSupabaseClient(targetOverride?.url, targetOverride?.key);
+  if (!client) return { success: false, error: 'No Supabase credentials.' };
+
+  try {
+    let payloadData: BackupPayload | null = null;
+
+    // 1. Try fetching from gym_backups by targetGymCode first
+    if (targetGymCode) {
+      const { data: matchedData } = await client
+        .from('gym_backups')
+        .select('*')
+        .eq('gym_code', targetGymCode)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (matchedData && (matchedData.payload || matchedData.snapshot_data)) {
+        payloadData = (matchedData.payload || matchedData.snapshot_data) as BackupPayload;
+      }
+    }
+
+    // Fallback: If no match by targetGymCode, grab latest backup snapshot overall
     if (!payloadData) {
-      return { success: false, error: 'No backup payload found in Supabase.' };
+      const { data: latestData } = await client
+        .from('gym_backups')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestData && (latestData.payload || latestData.snapshot_data)) {
+        payloadData = (latestData.payload || latestData.snapshot_data) as BackupPayload;
+      }
     }
 
-    return { success: true, data: payloadData as BackupPayload };
+    // 2. Fetch relational tables (with fallback) and merge to ensure all members & payments are present
+    const relRes = await fetchRelationalDataFromSupabase(targetGymCode, targetOverride);
+    if (relRes.success && relRes.data) {
+      const rel = relRes.data;
+      if (!payloadData) {
+        payloadData = {
+          profile: {
+            name: 'Rk Fitness World',
+            code: targetGymCode || 'RK-GYM-DEFAULT',
+            ownerName: 'RK Admin',
+            email: 'owner@rkfitnessworld.com',
+            phone: '+919876543210',
+            currency: '₹',
+            whatsappReminderTemplate: 'Hello {NAME}, your membership for {PLAN} at Rk Fitness World is expiring on {EXPIRY}. Please renew to continue your workout regime!',
+            plans: []
+          },
+          members: rel.members || [],
+          payments: rel.payments || [],
+          expenses: rel.expenses || [],
+          enquiries: rel.enquiries || [],
+          staff: rel.staff || [],
+          activities: rel.activities || []
+        };
+      } else {
+        if (rel.members && rel.members.length > 0) payloadData.members = rel.members;
+        if (rel.payments && rel.payments.length > 0) payloadData.payments = rel.payments;
+        if (rel.expenses && rel.expenses.length > 0) payloadData.expenses = rel.expenses;
+        if (rel.enquiries && rel.enquiries.length > 0) payloadData.enquiries = rel.enquiries;
+        if (rel.staff && rel.staff.length > 0) payloadData.staff = rel.staff;
+      }
+    }
+
+    if (payloadData) {
+      return { success: true, data: payloadData };
+    }
+
+    return { success: false, error: 'No data found in Supabase for this account.' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Restore failed.' };
   }

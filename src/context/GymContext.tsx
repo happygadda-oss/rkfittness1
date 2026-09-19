@@ -169,6 +169,34 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
 
     setIsLoaded(true);
+
+    // --- AUTOMATIC CLOUD RESTORE ON LOGIN (MULTI-DEVICE & BROWSER SYNC) ---
+    const autoRestoreFromCloud = async () => {
+      try {
+        const userGymCode = `RK-GYM-${(user.username || 'DEFAULT').toUpperCase()}`;
+        const userConfig = getStoredSupabaseConfig(prefix);
+        const masterConfig = getStoredSupabaseConfig('');
+        const activeUrl = userConfig.url || masterConfig.url;
+        const activeKey = userConfig.key || masterConfig.key;
+
+        if (activeUrl && activeKey) {
+          const res = await restoreFromSupabase(userGymCode, { url: activeUrl, key: activeKey });
+          if (res.success && res.data) {
+            if (res.data.profile) setProfile(res.data.profile);
+            if (res.data.members && res.data.members.length > 0) setMembers(res.data.members);
+            if (res.data.payments && res.data.payments.length > 0) setPayments(res.data.payments);
+            if (res.data.expenses && res.data.expenses.length > 0) setExpenses(res.data.expenses);
+            if (res.data.enquiries && res.data.enquiries.length > 0) setEnquiries(res.data.enquiries);
+            if (res.data.staff && res.data.staff.length > 0) setStaff(res.data.staff);
+            if (res.data.activities && res.data.activities.length > 0) setActivities(res.data.activities);
+          }
+        }
+      } catch (err) {
+        console.warn('Auto cloud restore on login skipped:', err);
+      }
+    };
+
+    autoRestoreFromCloud();
   }, [user?.id]);
 
   // Persist state updates to user-isolated local storage
@@ -184,6 +212,35 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${prefix}rk_gym_v2_staff`, JSON.stringify(staff));
       localStorage.setItem(`${prefix}rk_gym_v2_activities`, JSON.stringify(activities));
     } catch {}
+  }, [profile, members, enquiries, payments, expenses, staff, activities, isLoaded, user?.id]);
+
+  // --- AUTOMATIC REAL-TIME BACKGROUND CLOUD SYNC ON CHANGES ---
+  useEffect(() => {
+    if (!isLoaded || !user) return;
+    const timer = setTimeout(() => {
+      const prefix = `${user.id}_`;
+      const config = getStoredSupabaseConfig(prefix);
+      const masterConfig = getStoredSupabaseConfig('');
+      const targetUrl = config.url || masterConfig.url;
+      const targetKey = config.key || masterConfig.key;
+
+      if (targetUrl && targetKey) {
+        const payload: BackupPayload = {
+          profile,
+          members,
+          payments,
+          expenses,
+          enquiries,
+          staff,
+          activities
+        };
+        backupToSupabase(payload, { url: targetUrl, key: targetKey }).catch(err =>
+          console.warn('Background auto cloud backup error:', err)
+        );
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, [profile, members, enquiries, payments, expenses, staff, activities, isLoaded, user?.id]);
 
   const updateSupabaseConfig = (url: string, key: string, autoSync: boolean) => {

@@ -113,6 +113,16 @@ export const DatabaseView: React.FC = () => {
     }
   };
 
+  const handleDisconnect = () => {
+    if (window.confirm('Disconnect current Supabase cloud connection and reset API keys?')) {
+      updateSupabaseConfig('', '', false);
+      setUrlInput('');
+      setKeyInput('');
+      setIsConnected(false);
+      setStatusMsg({ text: 'Disconnected from Supabase. Enter new credentials anytime to connect a different cloud database.', isSuccess: true });
+    }
+  };
+
   const handleBackupAllData = async () => {
     setIsLoading(true);
     setActiveSyncingTable('all');
@@ -148,7 +158,7 @@ export const DatabaseView: React.FC = () => {
     const res = await restoreFromCloud();
     setIsLoading(false);
     if (res.success) {
-      setStatusMsg({ text: 'Data restored from Supabase Cloud snapshot!', isSuccess: true });
+      setStatusMsg({ text: 'Dataset restored successfully from Supabase!', isSuccess: true });
     } else {
       setStatusMsg({ text: res.error || 'Restore failed.', isError: true });
     }
@@ -447,7 +457,7 @@ export const DatabaseView: React.FC = () => {
             </label>
           </div>
 
-          <div className="flex items-center gap-3 pt-3">
+          <div className="flex items-center gap-3 pt-3 flex-wrap">
             <button
               type="button"
               onClick={handleTestConn}
@@ -464,8 +474,20 @@ export const DatabaseView: React.FC = () => {
               className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-glow-blue flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {isTestingConn && <span className="w-3 h-3 rounded-full border-2 border-slate-950 border-t-transparent animate-spin"></span>}
-              <span>Save Credentials</span>
+              <span>Save & Connect Credentials</span>
             </button>
+
+            {supabaseConfig.url && (
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                disabled={isLoading || isTestingConn}
+                className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50 ml-auto"
+              >
+                <WifiOff className="w-4 h-4" />
+                <span>Disconnect Account</span>
+              </button>
+            )}
           </div>
         </form>
 
