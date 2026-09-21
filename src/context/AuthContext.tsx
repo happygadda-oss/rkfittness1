@@ -80,25 +80,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const cloudRes = await fetchUsersFromSupabase();
         if (cloudRes.success && cloudRes.users && cloudRes.users.length > 0) {
-          const userMap = new Map<string, User>();
+          // Cloud is the absolute source of truth. Discard local users to prevent deleted accounts from resurrecting.
+          let syncedUsers = [...cloudRes.users];
           
-          // Helper to add user prioritizing cloud data for duplicates
-          const addUser = (u: User) => {
-            const key = u.username.toLowerCase();
-            if (!userMap.has(key)) {
-              userMap.set(key, u);
-            }
-          };
+          // Ensure default admin always exists even if cloud somehow lost it
+          if (!syncedUsers.some(u => u.username.toLowerCase() === 'admin')) {
+            syncedUsers.unshift(defaultAdmin);
+          }
 
-          // Add cloud users first (they win if there are duplicates)
-          cloudRes.users.forEach(addUser);
-          
-          // Then add local users if they don't exist in cloud
-          localUsers.forEach(addUser);
-
-          const merged = Array.from(userMap.values());
-          setUsers(merged);
-          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));
+          setUsers(syncedUsers);
+          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(syncedUsers));
         }
       } catch {}
 
