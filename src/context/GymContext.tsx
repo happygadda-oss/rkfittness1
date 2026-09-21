@@ -195,14 +195,14 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               p.code = userGymCode;
               setProfile(p);
             }
-            if (res.data.members && res.data.members.length > 0) setMembers(res.data.members);
-            if (res.data.payments && res.data.payments.length > 0) setPayments(res.data.payments);
-            if (res.data.expenses && res.data.expenses.length > 0) setExpenses(res.data.expenses);
-            if (res.data.enquiries && res.data.enquiries.length > 0) setEnquiries(res.data.enquiries);
-            if (res.data.staff && res.data.staff.length > 0) setStaff(res.data.staff);
-            if (res.data.activities && res.data.activities.length > 0) setActivities(res.data.activities);
+            setMembers(res.data.members || []);
+            setPayments(res.data.payments || []);
+            setExpenses(res.data.expenses || []);
+            setEnquiries(res.data.enquiries || []);
+            setStaff(res.data.staff || []);
+            setActivities(res.data.activities || []);
           } else if (res.error === 'No data found in Supabase for this account.') {
-            // Cloud is empty (wiped). Clear local state to prevent zombie data reviving.
+            // Fallback for empty backup entirely
             setMembers([]);
             setPayments([]);
             setExpenses([]);
