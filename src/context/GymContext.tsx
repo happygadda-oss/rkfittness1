@@ -124,11 +124,13 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(() => getStoredSupabaseConfig(userPrefix));
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isCloudSyncComplete, setIsCloudSyncComplete] = useState(false);
 
   // Read stored data for the active user account or fallback to clean empty arrays
   useEffect(() => {
     if (!user) {
       setActiveDataUserId(null);
+      setIsCloudSyncComplete(false);
       return;
     }
     const prefix = `${user.id}_`;
@@ -179,6 +181,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setIsLoaded(true);
     setActiveDataUserId(user.id);
+    setIsCloudSyncComplete(false); // Reset for new user
 
     // --- AUTOMATIC CLOUD RESTORE ON LOGIN (MULTI-DEVICE & BROWSER SYNC) ---
     const autoRestoreFromCloud = async () => {
@@ -215,6 +218,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (err) {
         console.warn('Auto cloud restore on login skipped:', err);
+      } finally {
+        setIsCloudSyncComplete(true);
       }
     };
 
@@ -238,7 +243,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- AUTOMATIC REAL-TIME BACKGROUND CLOUD SYNC ON CHANGES ---
   useEffect(() => {
-    if (!isLoaded || !user || activeDataUserId !== user.id) return;
+    if (!isLoaded || !isCloudSyncComplete || !user || activeDataUserId !== user.id) return;
     const timer = setTimeout(() => {
       const prefix = `${user.id}_`;
       const config = getStoredSupabaseConfig(prefix);
