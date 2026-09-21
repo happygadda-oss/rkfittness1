@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
-import { backupUsersTable, fetchUsersFromSupabase } from '../services/supabaseClient';
+import { backupUsersTable, fetchUsersFromSupabase, deleteUserAccountFromSupabase } from '../services/supabaseClient';
 
 interface AuthContextType {
   user: User | null;
@@ -326,10 +326,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteUserAccount = async (id: string) => {
+    const userToDelete = users.find(u => u.id === id);
     const updated = users.filter(u => u.id !== id);
     setUsers(updated);
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updated));
-    backupUsersTable(updated, 'RK-GYM-MASTER').catch(err => console.warn('Supabase user delete:', err));
+
+    if (userToDelete) {
+      deleteUserAccountFromSupabase(userToDelete.id, userToDelete.username).catch(err =>
+        console.warn('Supabase user account delete error:', err)
+      );
+    }
+    backupUsersTable(updated, 'RK-GYM-MASTER').catch(err => console.warn('Supabase user sync:', err));
+
     if (user?.id === id) {
       logout();
     }

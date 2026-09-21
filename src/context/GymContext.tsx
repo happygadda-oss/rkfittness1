@@ -31,7 +31,9 @@ import {
   backupUsersTable,
   backupToSupabase,
   restoreFromSupabase,
-  testSupabaseConnection
+  testSupabaseConnection,
+  deleteRecordFromSupabase,
+  clearWorkspaceDataFromSupabase
 } from '../services/supabaseClient';
 import type { SupabaseConfig, BackupPayload } from '../services/supabaseClient';
 import { useAuth } from './AuthContext';
@@ -372,9 +374,14 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteMember = (id: string, reversePayments: boolean = false) => {
     const mem = members.find((m) => m.id === id);
     setMembers((prev) => prev.filter((m) => m.id !== id));
+    deleteRecordFromSupabase('gym_members', id).catch(err => console.warn('Supabase member delete:', err));
     
     if (reversePayments) {
+      const associated = payments.filter((p) => p.memberId === id);
       setPayments((prev) => prev.filter((p) => p.memberId !== id));
+      associated.forEach((p) => {
+        deleteRecordFromSupabase('gym_payments', p.id).catch(err => console.warn('Supabase payment delete:', err));
+      });
     }
     
     if (mem) {
@@ -435,6 +442,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteEnquiry = (id: string) => {
     setEnquiries((prev) => prev.filter((eq) => eq.id !== id));
+    deleteRecordFromSupabase('gym_enquiries', id).catch(err => console.warn('Supabase enquiry delete:', err));
   };
 
   const convertEnquiryToMember = (enquiryId: string, memberData: Omit<Member, 'id'>) => {
@@ -463,6 +471,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteExpense = (id: string) => {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
+    deleteRecordFromSupabase('gym_expenses', id).catch(err => console.warn('Supabase expense delete:', err));
   };
 
   const addStaff = (staffData: Omit<StaffMember, 'id'>) => {
@@ -480,6 +489,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteStaff = (id: string) => {
     setStaff((prev) => prev.filter((s) => s.id !== id));
+    deleteRecordFromSupabase('gym_staff', id).catch(err => console.warn('Supabase staff delete:', err));
   };
 
   // User-isolated permanent wipe function
@@ -500,6 +510,9 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.removeItem(`${prefix}rk_gym_v2_staff`);
         localStorage.removeItem(`${prefix}rk_gym_v2_activities`);
       } catch {}
+
+      const gymCode = `RK-GYM-${(user.username || 'DEFAULT').toUpperCase()}`;
+      clearWorkspaceDataFromSupabase(gymCode).catch(err => console.warn('Supabase workspace wipe:', err));
     }
   };
 

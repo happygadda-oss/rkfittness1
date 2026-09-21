@@ -530,7 +530,98 @@ export async function backupUsersTable(users: User[], gymCode: string, override?
   }
 
   if (errUsers) return { success: false, error: errUsers.message };
+
+  // Clean up orphaned users in Supabase gym_users table so duplicate passwords or stale accounts don't persist
+  try {
+    const activeIds = users.map(u => u.id);
+    const activeUsernames = users.map(u => u.username.toLowerCase());
+    const { data: cloudUsers } = await client.from('gym_users').select('id, username');
+    if (cloudUsers && cloudUsers.length > 0) {
+      for (const cu of cloudUsers) {
+        if (!activeIds.includes(cu.id) && cu.username && !activeUsernames.includes(cu.username.toLowerCase())) {
+          await client.from('gym_users').delete().eq('id', cu.id);
+        }
+      }
+    }
+  } catch {}
+
   return { success: true };
+}
+
+export async function deleteRecordFromSupabase(
+  tableName: 'gym_members' | 'gym_payments' | 'gym_expenses' | 'gym_enquiries' | 'gym_staff',
+  recordId: string,
+  override?: { url: string; key: string }
+): Promise<{ success: boolean; error?: string }> {
+  const client = createCustomSupabaseClient(override?.url, override?.key);
+  if (!client) return { success: false, error: 'No Supabase credentials.' };
+
+  try {
+    const { error } = await client.from(tableName).delete().eq('id', recordId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || `Failed to delete record from ${tableName}.` };
+  }
+}
+
+export async function deleteUserAccountFromSupabase(
+  userId: string,
+  username: string,
+  override?: { url: string; key: string }
+): Promise<{ success: boolean; error?: string }> {
+  const currentConfig = getStoredSupabaseConfig();
+  const mainAdminConfig = getStoredSupabaseConfig('');
+  const targetUrl = override?.url || currentConfig.url || mainAdminConfig.url;
+  const targetKey = override?.key || currentConfig.key || mainAdminConfig.key;
+
+  const client = createCustomSupabaseClient(targetUrl, targetKey);
+  if (!client) return { success: false, error: 'No Supabase credentials.' };
+
+  try {
+    // 1. Delete user account record from gym_users
+    if (userId) await client.from('gym_users').delete().eq('id', userId);
+    if (username) await client.from('gym_users').delete().eq('username', username.trim().toLowerCase());
+
+    // 2. Delete all isolated workspace data & backups for this user's gym_code from Supabase
+    const gymCode = `RK-GYM-${username.toUpperCase()}`;
+    await Promise.allSettled([
+      client.from('gym_members').delete().eq('gym_code', gymCode),
+      client.from('gym_payments').delete().eq('gym_code', gymCode),
+      client.from('gym_expenses').delete().eq('gym_code', gymCode),
+      client.from('gym_enquiries').delete().eq('gym_code', gymCode),
+      client.from('gym_staff').delete().eq('gym_code', gymCode),
+      client.from('gym_backups').delete().eq('gym_code', gymCode),
+      client.from('gym_backups').delete().eq('id', gymCode)
+    ]);
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to delete user account from Supabase.' };
+  }
+}
+
+export async function clearWorkspaceDataFromSupabase(
+  gymCode: string,
+  override?: { url: string; key: string }
+): Promise<{ success: boolean; error?: string }> {
+  const client = createCustomSupabaseClient(override?.url, override?.key);
+  if (!client) return { success: false, error: 'No Supabase credentials.' };
+
+  try {
+    await Promise.allSettled([
+      client.from('gym_members').delete().eq('gym_code', gymCode),
+      client.from('gym_payments').delete().eq('gym_code', gymCode),
+      client.from('gym_expenses').delete().eq('gym_code', gymCode),
+      client.from('gym_enquiries').delete().eq('gym_code', gymCode),
+      client.from('gym_staff').delete().eq('gym_code', gymCode),
+      client.from('gym_backups').delete().eq('gym_code', gymCode),
+      client.from('gym_backups').delete().eq('id', gymCode)
+    ]);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to clear workspace data from Supabase.' };
+  }
 }
 
 export async function fetchUsersFromSupabase(override?: { url: string; key: string }): Promise<{ success: boolean; users?: User[]; error?: string }> {
