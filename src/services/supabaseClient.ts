@@ -529,21 +529,13 @@ export async function backupUsersTable(users: User[], gymCode: string, override?
     break;
   }
 
-  if (errUsers) return { success: false, error: errUsers.message };
-
-  // Clean up orphaned users in Supabase gym_users table so duplicate passwords or stale accounts don't persist
-  try {
-    const activeIds = users.map(u => u.id);
-    const activeUsernames = users.map(u => u.username.toLowerCase());
-    const { data: cloudUsers } = await client.from('gym_users').select('id, username');
-    if (cloudUsers && cloudUsers.length > 0) {
-      for (const cu of cloudUsers) {
-        if (!activeIds.includes(cu.id) && cu.username && !activeUsernames.includes(cu.username.toLowerCase())) {
-          await client.from('gym_users').delete().eq('id', cu.id);
-        }
-      }
+  if (errUsers) {
+    let errMsg = errUsers.message || '';
+    if (errMsg.includes('invalid input syntax for type uuid')) {
+       errMsg = 'The gym_users ID column in Supabase is set to UUID, but needs to be TEXT. Please update your Supabase table schema.';
     }
-  } catch {}
+    return { success: false, error: errMsg };
+  }
 
   return { success: true };
 }

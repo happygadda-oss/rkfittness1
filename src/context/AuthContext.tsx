@@ -20,7 +20,7 @@ interface AuthContextType {
     newPassword?: string;
     newName?: string;
   }) => Promise<{ success: boolean; error?: string }>;
-  deleteUserAccount: (id: string) => Promise<void>;
+  deleteUserAccount: (id: string) => Promise<{ success: boolean; error?: string }>;
   lockSession: () => void;
   isLocked: boolean;
   unlockSession: (pinOrPass: string) => Promise<boolean>;
@@ -130,11 +130,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const updatedUsers = [...users, createdUser];
+
+    // Attempt Backup to Admin Supabase Server first
+    const backupRes = await backupUsersTable(updatedUsers, 'RK-GYM-MASTER');
+    if (backupRes && !backupRes.success) {
+      return { success: false, error: `Database Error: ${backupRes.error}` };
+    }
+
     setUsers(updatedUsers);
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
-
-    // Save & Backup to Admin Supabase Server (gym_users table)
-    backupUsersTable(updatedUsers, 'RK-GYM-MASTER').catch(err => console.warn('Supabase users backup:', err));
 
     // Automatically sign in to new account
     setUser(createdUser);
@@ -238,15 +242,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const newHash = await hashString(newPass);
     const updatedUser = { ...user, passwordHash: newHash };
-    setUser(updatedUser);
-    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updatedUser));
-
     const updatedUsers = users.map(u => u.id === user.id ? updatedUser : u);
-    setUsers(updatedUsers);
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
 
     // Backup updated password hashes to Supabase
-    backupUsersTable(updatedUsers, 'RK-GYM-MASTER').catch(err => console.warn('Supabase password backup:', err));
+    const backupRes = await backupUsersTable(updatedUsers, 'RK-GYM-MASTER');
+    if (backupRes && !backupRes.success) {
+      return { success: false, error: `Database Error: ${backupRes.error}` };
+    }
+
+    setUser(updatedUser);
+    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updatedUser));
+    setUsers(updatedUsers);
+    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
 
     return { success: true };
   };
@@ -257,9 +264,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const newHash = await hashString(newPass);
     const updatedUsers = users.map(u => u.id === userId ? { ...u, passwordHash: newHash } : u);
+    
+    const backupRes = await backupUsersTable(updatedUsers, 'RK-GYM-MASTER');
+    if (backupRes && !backupRes.success) {
+      return { success: false, error: `Database Error: ${backupRes.error}` };
+    }
+
     setUsers(updatedUsers);
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
-    backupUsersTable(updatedUsers, 'RK-GYM-MASTER').catch(err => console.warn('Supabase password reset:', err));
     
     // Update logged in user if resetting self
     if (user?.id === userId) {
@@ -312,35 +324,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       passwordHash: finalHash
     };
 
-    setUser(updatedUser);
-    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updatedUser));
-
     const updatedUsers = users.map(u => u.id === user.id ? updatedUser : u);
-    setUsers(updatedUsers);
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
 
     // Backup to Supabase
-    backupUsersTable(updatedUsers, 'RK-GYM-MASTER').catch(err => console.warn('Supabase admin account sync:', err));
+    const backupRes = await backupUsersTable(updatedUsers, 'RK-GYM-MASTER');
+    if (backupRes && !backupRes.success) {
+      return { success: false, error: `Database Error: ${backupRes.error}` };
+    }
+
+    setUser(updatedUser);
+    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(updatedUser));
+    setUsers(updatedUsers);
+    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
 
     return { success: true };
   };
 
-  const deleteUserAccount = async (id: string) => {
+  const deleteUserAccount = async (id: string): Promise<{ success: boolean; error?: string }> => {
     const userToDelete = users.find(u => u.id === id);
     const updated = users.filter(u => u.id !== id);
-    setUsers(updated);
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updated));
 
     if (userToDelete) {
-      deleteUserAccountFromSupabase(userToDelete.id, userToDelete.username).catch(err =>
-        console.warn('Supabase user account delete error:', err)
-      );
+      const delRes = await deleteUserAccountFromSupabase(userToDelete.id, userToDelete.username);
+      if (delRes && !delRes.success) {
+        return { success: false, error: `Database Error: ${delRes.error}` };
+      }
     }
-    backupUsersTable(updated, 'RK-GYM-MASTER').catch(err => console.warn('Supabase user sync:', err));
+    
+    const backupRes = await backupUsersTable(updated, 'RK-GYM-MASTER');
+    if (backupRes && !backupRes.success) {
+      return { success: false, error: `Database Error: ${backupRes.error}` };
+    }
+
+    setUsers(updated);
+    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(updated));
 
     if (user?.id === id) {
       logout();
     }
+    return { success: true };
   };
 
   const addUserAccount = async (newUser: Omit<User, 'id'>, passwordOrPin: string): Promise<{ success: boolean; error?: string }> => {

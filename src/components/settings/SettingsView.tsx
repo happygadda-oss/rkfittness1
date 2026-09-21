@@ -127,7 +127,11 @@ export const SettingsView: React.FC = () => {
     }
 
     if (window.confirm(`Password verified. Are you absolutely sure you want to delete user account @${userToDelete.username}? This action cannot be undone.`)) {
-      await deleteUserAccount(userToDelete.id);
+      const res = await deleteUserAccount(userToDelete.id);
+      if (res && !res.success) {
+        window.alert(`Failed to delete account: ${res.error}`);
+        return;
+      }
       setSavedMsg(`Account @${userToDelete.username} removed successfully.`);
       setTimeout(() => setSavedMsg(''), 3000);
     }
