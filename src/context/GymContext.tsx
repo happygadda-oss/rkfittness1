@@ -146,8 +146,11 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      const savedProfile = loadKey('rk_gym_v2_profile');
-      setProfile(savedProfile ? JSON.parse(savedProfile) : defaultProfile);
+      const savedProfileStr = loadKey('rk_gym_v2_profile');
+      const loadedProfile = savedProfileStr ? JSON.parse(savedProfileStr) : defaultProfile;
+      // Force gym code to match the isolated account username
+      loadedProfile.code = `RK-GYM-${(user.username || 'DEFAULT').toUpperCase()}`;
+      setProfile(loadedProfile);
 
       const savedMembers = loadKey('rk_gym_v2_members');
       setMembers(savedMembers ? JSON.parse(savedMembers) : []);
@@ -321,7 +324,9 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProfile = (updated: Partial<GymProfile>) => {
-    setProfile((prev) => ({ ...prev, ...updated }));
+    // Force gym code to match the isolated account username
+    const safeUpdated = { ...updated, code: `RK-GYM-${(user?.username || 'DEFAULT').toUpperCase()}` };
+    setProfile((prev) => ({ ...prev, ...safeUpdated }));
   };
 
   const logActivity = (type: ActivityItem['type'], memberName: string, detail: string, iconType?: ActivityItem['iconType']) => {

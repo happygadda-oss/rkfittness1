@@ -27,7 +27,6 @@ export const SettingsView: React.FC = () => {
   const { user, users, addUserAccount, deleteUserAccount, adminResetPassword, updateAdminAccountDetails } = useAuth();
 
   const [gymName, setGymName] = useState(profile.name);
-  const [gymCode, setGymCode] = useState(profile.code);
   const [phone, setPhone] = useState(profile.phone);
   const [email, setEmail] = useState(profile.email);
   const [whatsappTemplate, setWhatsappTemplate] = useState(profile.whatsappReminderTemplate);
@@ -88,7 +87,7 @@ export const SettingsView: React.FC = () => {
     e.preventDefault();
     updateProfile({
       name: gymName,
-      code: gymCode,
+      code: `RK-GYM-${(user?.username || 'DEFAULT').toUpperCase()}`,
       phone,
       email,
       whatsappReminderTemplate: whatsappTemplate,
@@ -507,12 +506,12 @@ export const SettingsView: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#8e9db5] mb-1">Gym Code</label>
+              <label className="block text-xs font-bold text-[#8e9db5] mb-1">Gym Code (Fixed)</label>
               <input
                 type="text"
-                value={gymCode}
-                onChange={(e) => setGymCode(e.target.value)}
-                className="w-full bg-[#0f1624] border border-[#22324b] rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#0099ff]"
+                value={`RK-GYM-${(user?.username || 'DEFAULT').toUpperCase()}`}
+                disabled
+                className="w-full bg-[#0f1624] border border-[#22324b] rounded-xl px-3 py-2 text-xs text-[#8e9db5] font-mono opacity-60 cursor-not-allowed"
               />
             </div>
             <div>
