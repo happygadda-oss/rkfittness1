@@ -788,20 +788,6 @@ export async function restoreFromSupabase(
       }
     }
 
-    // Fallback: If no match by targetGymCode, grab latest backup snapshot overall
-    if (!payloadData) {
-      const { data: latestData } = await client
-        .from('gym_backups')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (latestData && (latestData.payload || latestData.snapshot_data)) {
-        payloadData = (latestData.payload || latestData.snapshot_data) as BackupPayload;
-      }
-    }
-
     // 2. Fetch relational tables (with fallback) and merge to ensure all members & payments are present
     const relRes = await fetchRelationalDataFromSupabase(targetGymCode, targetOverride);
     if (relRes.success && relRes.data) {
