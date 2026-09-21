@@ -81,8 +81,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cloudRes = await fetchUsersFromSupabase();
         if (cloudRes.success && cloudRes.users && cloudRes.users.length > 0) {
           const userMap = new Map<string, User>();
-          localUsers.forEach(u => userMap.set(u.id, u));
-          cloudRes.users.forEach(u => userMap.set(u.id, u));
+          
+          // Helper to add user prioritizing cloud data for duplicates
+          const addUser = (u: User) => {
+            const key = u.username.toLowerCase();
+            if (!userMap.has(key)) {
+              userMap.set(key, u);
+            }
+          };
+
+          // Add cloud users first (they win if there are duplicates)
+          cloudRes.users.forEach(addUser);
+          
+          // Then add local users if they don't exist in cloud
+          localUsers.forEach(addUser);
+
           const merged = Array.from(userMap.values());
           setUsers(merged);
           localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));

@@ -143,12 +143,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const loadKey = (keyName: string) => {
       const prefixed = localStorage.getItem(`${prefix}${keyName}`);
-      if (prefixed) return prefixed;
-      if (isAdmin) {
-        const unPrefixed = localStorage.getItem(keyName);
-        if (unPrefixed) return unPrefixed;
-      }
-      return null;
+      return prefixed ? prefixed : null;
     };
 
     try {
