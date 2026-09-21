@@ -203,6 +203,14 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (res.data.enquiries && res.data.enquiries.length > 0) setEnquiries(res.data.enquiries);
             if (res.data.staff && res.data.staff.length > 0) setStaff(res.data.staff);
             if (res.data.activities && res.data.activities.length > 0) setActivities(res.data.activities);
+          } else if (res.error === 'No data found in Supabase for this account.') {
+            // Cloud is empty (wiped). Clear local state to prevent zombie data reviving.
+            setMembers([]);
+            setPayments([]);
+            setExpenses([]);
+            setEnquiries([]);
+            setStaff([]);
+            setActivities([]);
           }
         }
       } catch (err) {
@@ -328,6 +336,15 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (result.data.staff) setStaff(result.data.staff);
       if (result.data.activities) setActivities(result.data.activities);
       return { success: true };
+    } else if (result.error === 'No data found in Supabase for this account.') {
+      // Cloud is wiped. Sync this wipe to local state.
+      setMembers([]);
+      setPayments([]);
+      setExpenses([]);
+      setEnquiries([]);
+      setStaff([]);
+      setActivities([]);
+      return { success: true, message: 'Cloud is empty. Local data cleared.' };
     }
     return { success: false, error: result.error || 'Failed to restore dataset.' };
   };
