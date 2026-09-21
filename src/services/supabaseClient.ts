@@ -662,11 +662,9 @@ export async function fetchRelationalDataFromSupabase(gymCode?: string, override
     const fetchTableRows = async (tableName: string) => {
       if (gymCode) {
         const { data: matched } = await client.from(tableName).select('*').eq('gym_code', gymCode);
-        if (matched && matched.length > 0) return matched;
+        return matched || [];
       }
-      // Fallback: fetch all rows if specific gymCode query yields no results
-      const { data: allRows } = await client.from(tableName).select('*');
-      return allRows || [];
+      return [];
     };
 
     // 1. Members
