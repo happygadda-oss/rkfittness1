@@ -112,6 +112,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const { user } = useAuth();
   const userPrefix = user ? `${user.id}_` : '';
 
+  const [activeDataUserId, setActiveDataUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<GymProfile>(initialGymProfile);
   const [members, setMembers] = useState<Member[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -126,7 +127,10 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Read stored data for the active user account or fallback to clean empty arrays
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setActiveDataUserId(null);
+      return;
+    }
     const prefix = `${user.id}_`;
     const isAdmin = user.id === 'usr_admin' || user.username === 'admin';
     const defaultProfile: GymProfile = {
@@ -174,6 +178,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
 
     setIsLoaded(true);
+    setActiveDataUserId(user.id);
 
     // --- AUTOMATIC CLOUD RESTORE ON LOGIN (MULTI-DEVICE & BROWSER SYNC) ---
     const autoRestoreFromCloud = async () => {
@@ -187,7 +192,11 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (activeUrl && activeKey) {
           const res = await restoreFromSupabase(userGymCode, { url: activeUrl, key: activeKey });
           if (res.success && res.data) {
-            if (res.data.profile) setProfile(res.data.profile);
+            if (res.data.profile) {
+              const p = res.data.profile;
+              p.code = userGymCode;
+              setProfile(p);
+            }
             if (res.data.members && res.data.members.length > 0) setMembers(res.data.members);
             if (res.data.payments && res.data.payments.length > 0) setPayments(res.data.payments);
             if (res.data.expenses && res.data.expenses.length > 0) setExpenses(res.data.expenses);
@@ -206,7 +215,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Persist state updates to user-isolated local storage
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded || !user || activeDataUserId !== user.id) return;
     const prefix = `${user.id}_`;
     try {
       localStorage.setItem(`${prefix}rk_gym_v2_profile`, JSON.stringify(profile));
@@ -221,7 +230,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- AUTOMATIC REAL-TIME BACKGROUND CLOUD SYNC ON CHANGES ---
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded || !user || activeDataUserId !== user.id) return;
     const timer = setTimeout(() => {
       const prefix = `${user.id}_`;
       const config = getStoredSupabaseConfig(prefix);
@@ -307,7 +316,11 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const restoreFromCloud = async (override?: { url: string; key: string }) => {
     const result = await restoreFromSupabase(override || { url: supabaseConfig.url, key: supabaseConfig.key });
     if (result.success && result.data) {
-      if (result.data.profile) setProfile(result.data.profile);
+      if (result.data.profile) {
+        const p = result.data.profile;
+        p.code = `RK-GYM-${(user?.username || 'DEFAULT').toUpperCase()}`;
+        setProfile(p);
+      }
       if (result.data.members) setMembers(result.data.members);
       if (result.data.payments) setPayments(result.data.payments);
       if (result.data.expenses) setExpenses(result.data.expenses);
