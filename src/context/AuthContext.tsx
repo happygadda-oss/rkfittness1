@@ -159,17 +159,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const logout = async () => {
-    const client = createCustomSupabaseClient();
-    if (client) {
-      try {
-        await client.auth.signOut();
-      } catch (err) {
-        console.warn('Supabase sign out error:', err);
-      }
-    }
+  const logout = () => {
     setUser(null);
     setIsLocked(false);
+    
+    // Perform Supabase sign out in the background
+    const client = createCustomSupabaseClient();
+    if (client) {
+      client.auth.signOut().catch(err => {
+        console.warn('Supabase sign out error:', err);
+      });
+    }
   };
 
   const addUserAccount = async (newUser: Omit<User, 'id'>, passwordOrPin: string) => {
