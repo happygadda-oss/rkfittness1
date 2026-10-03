@@ -73,15 +73,27 @@ export function saveSupabaseConfig(url: string, key: string, autoSync: boolean, 
   localStorage.setItem(STORAGE_AUTO_SYNC_KEY, String(autoSync));
 }
 
+let cachedClient: SupabaseClient | null = null;
+let cachedUrl: string = '';
+let cachedKey: string = '';
+
 export function createCustomSupabaseClient(url?: string, key?: string): SupabaseClient | null {
   const config = getStoredSupabaseConfig();
   const sanitizedUrl = sanitizeSupabaseUrl(url || config.url);
   const cleanKey = (key || config.key) ? (key || config.key).trim() : '';
   if (!sanitizedUrl || !cleanKey) return null;
+  
+  if (cachedClient && cachedUrl === sanitizedUrl && cachedKey === cleanKey) {
+    return cachedClient;
+  }
+  
   try {
-    return createClient(sanitizedUrl, cleanKey, {
+    cachedClient = createClient(sanitizedUrl, cleanKey, {
       auth: { persistSession: true, autoRefreshToken: true }
     });
+    cachedUrl = sanitizedUrl;
+    cachedKey = cleanKey;
+    return cachedClient;
   } catch (err) {
     console.error('Failed to create Supabase client:', err);
     return null;
