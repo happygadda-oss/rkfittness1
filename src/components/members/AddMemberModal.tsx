@@ -143,7 +143,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
     }
 
     if (actionType === 'whatsapp') {
-      const invNum = generateInvoicePDF({
+      generateInvoicePDF({
         name,
         phone,
         plan: finalPlanName,
@@ -159,7 +159,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         plan: finalPlanName,
         amountPaid: finalAmount,
         expiryDate
-      }, profile, invNum);
+      }, profile);
       
       window.open(waLink, '_blank');
     }

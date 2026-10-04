@@ -12,11 +12,9 @@ export const generateInvoicePDF = (
     expiryDate: string;
     paymentMethod: string;
   },
-  gymProfile: GymProfile,
-  invoiceNumber?: string
+  gymProfile: GymProfile
 ) => {
   const doc = new jsPDF();
-  const invNum = invoiceNumber || `INV-${Date.now()}`;
   
   // Header
   doc.setFontSize(22);
@@ -36,8 +34,7 @@ export const generateInvoicePDF = (
   
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Invoice No: ${invNum}`, 140, 30);
-  doc.text(`Date: ${new Date().toLocaleDateString()}`, 140, 35);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 140, 30);
   
   // Billed To
   doc.setFontSize(12);
@@ -79,8 +76,7 @@ export const generateInvoicePDF = (
   doc.text('Thank you for choosing us!', 105, 280, { align: 'center' });
 
   // Save the PDF
-  doc.save(`${memberDetails.name.replace(/\s+/g, '_')}_Invoice_${invNum}.pdf`);
-  return invNum;
+  doc.save(`${memberDetails.name.replace(/\s+/g, '_')}_Invoice.pdf`);
 };
 
 export const generateWhatsAppLink = (
@@ -91,8 +87,7 @@ export const generateWhatsAppLink = (
     amountPaid: number;
     expiryDate: string;
   },
-  gymProfile: GymProfile,
-  invoiceNum: string
+  gymProfile: GymProfile
 ) => {
   const cleanPhone = memberDetails.phone.replace(/\D/g, '');
   const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
@@ -103,8 +98,6 @@ Welcome to *${gymProfile.name || 'Our Gym'}*! 💪
 
 We have received your payment of *Rs. ${memberDetails.amountPaid}* for the *${memberDetails.plan}*.
 Your membership is active until *${memberDetails.expiryDate}*.
-
-(Invoice No: ${invoiceNum})
 
 I have generated your PDF invoice (can be attached to this chat).
 
