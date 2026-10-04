@@ -3,6 +3,7 @@ import { X, User, Phone, Dumbbell, Calendar, Check } from 'lucide-react';
 import type { Member, MemberType, PaymentMethod } from '../../types';
 import { useGym } from '../../context/GymContext';
 import { defaultGymPlans } from '../../utils/initialData';
+import { generateInvoicePDF, generateWhatsAppLink } from '../../utils/pdfGenerator';
 
 interface AddMemberModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   const [amountPaid, setAmountPaid] = useState<number>(initialData?.amountPaid || 4200);
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>(initialData?.gender || 'Male');
+  const [actionType, setActionType] = useState<'save' | 'whatsapp'>('save');
 
   useEffect(() => {
     if (initialData) {
@@ -106,17 +108,20 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
     e.preventDefault();
     if (!name.trim() || !phone.trim()) return;
 
+    const finalPlanName = initialData ? planName : `${planName} (${durationMonths}M)`;
+    const finalAmount = type === 'Trial' ? 0 : amountPaid;
+
     if (initialData) {
       updateMember(initialData.id, {
         name,
         phone,
         email,
         type,
-        plan: planName,
+        plan: finalPlanName,
         joinDate,
         expiryDate,
         paymentMethod,
-        amountPaid,
+        amountPaid: finalAmount,
         notes,
         gender
       });
@@ -126,15 +131,37 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         phone,
         email,
         type,
-        plan: `${planName} (${durationMonths}M)`,
+        plan: finalPlanName,
         joinDate,
         expiryDate,
         paymentMethod,
-        amountPaid: type === 'Trial' ? 0 : amountPaid,
+        amountPaid: finalAmount,
         status: new Date(expiryDate) >= new Date() ? 'Active' : 'Expired',
         notes,
         gender
       });
+    }
+
+    if (actionType === 'whatsapp') {
+      const invNum = generateInvoicePDF({
+        name,
+        phone,
+        plan: finalPlanName,
+        amountPaid: finalAmount,
+        joinDate,
+        expiryDate,
+        paymentMethod
+      }, profile);
+      
+      const waLink = generateWhatsAppLink({
+        name,
+        phone,
+        plan: finalPlanName,
+        amountPaid: finalAmount,
+        expiryDate
+      }, profile, invNum);
+      
+      window.open(waLink, '_blank');
     }
 
     onClose();
@@ -239,6 +266,28 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             </div>
           </div>
 
+          {/* Dates & Payment Details */}
+          <div className="grid grid-cols-2 gap-3 pb-1">
+            <div>
+              <label className="block text-xs font-bold text-[#8e9db5] mb-1">Joining Date</label>
+              <input
+                type="date"
+                value={joinDate}
+                onChange={(e) => setJoinDate(e.target.value)}
+                className="w-full bg-[#162032] border border-[#22324b] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0099ff]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#8e9db5] mb-1">Expiry Date</label>
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="w-full bg-[#162032] border border-[#22324b] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0099ff]"
+              />
+            </div>
+          </div>
+
           {/* Quick Duration Presets (1M, 3M, 6M, 12M) */}
           <div>
             <label className="block text-xs font-bold text-[#8e9db5] mb-1.5">Quick Duration Preset</label>
@@ -257,28 +306,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
                   {m} Month{m > 1 ? 's' : ''}
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* Dates & Payment Details */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div>
-              <label className="block text-xs font-bold text-[#8e9db5] mb-1">Joining Date</label>
-              <input
-                type="date"
-                value={joinDate}
-                onChange={(e) => setJoinDate(e.target.value)}
-                className="w-full bg-[#162032] border border-[#22324b] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0099ff]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#8e9db5] mb-1">Expiry Date</label>
-              <input
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full bg-[#162032] border border-[#22324b] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0099ff]"
-              />
             </div>
           </div>
 
@@ -331,10 +358,20 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             </button>
             <button
               type="submit"
+              onClick={() => setActionType('save')}
               className="px-6 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-glow-blue transition-all"
             >
               {initialData ? 'Save Changes' : 'Save Member'}
             </button>
+            {!initialData && (
+              <button
+                type="submit"
+                onClick={() => setActionType('whatsapp')}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 shadow-glow-green transition-all flex items-center gap-1.5"
+              >
+                <Phone className="w-3.5 h-3.5" /> Save & WhatsApp
+              </button>
+            )}
           </div>
         </form>
       </div>
