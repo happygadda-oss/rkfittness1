@@ -89,7 +89,7 @@ export function createCustomSupabaseClient(url?: string, key?: string): Supabase
   
   try {
     cachedClient = createClient(sanitizedUrl, cleanKey, {
-      auth: { persistSession: true, autoRefreshToken: true }
+      auth: { persistSession: false, autoRefreshToken: true }
     });
     cachedUrl = sanitizedUrl;
     cachedKey = cleanKey;
