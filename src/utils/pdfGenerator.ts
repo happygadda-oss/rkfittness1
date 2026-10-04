@@ -27,7 +27,7 @@ export const generateInvoicePDF = (
   doc.setTextColor(100, 100, 100);
   doc.text(`Phone: ${gymProfile.phone || 'N/A'}`, 14, 30);
   doc.text(`Email: ${gymProfile.email || 'N/A'}`, 14, 35);
-  doc.text(`Address: ${gymProfile.address || 'N/A'}`, 14, 40);
+  doc.text(`Address: ${(gymProfile as any).address || 'N/A'}`, 14, 40);
 
   // Invoice Details
   doc.setFontSize(16);
