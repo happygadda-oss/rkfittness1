@@ -8,12 +8,14 @@ interface EnquiriesViewProps {
   onOpenAddModal: () => void;
   isAddModalOpen: boolean;
   onCloseAddModal: () => void;
+  onConvert?: (eq: Enquiry) => void;
 }
 
 export const EnquiriesView: React.FC<EnquiriesViewProps> = ({
   onOpenAddModal,
   isAddModalOpen,
-  onCloseAddModal
+  onCloseAddModal,
+  onConvert
 }) => {
   const { enquiries, deleteEnquiry, convertEnquiryToMember } = useGym();
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -31,22 +33,26 @@ export const EnquiriesView: React.FC<EnquiriesViewProps> = ({
   });
 
   const handleConvert = (eq: Enquiry) => {
-    const defaultExpiry = new Date();
-    defaultExpiry.setMonth(defaultExpiry.getMonth() + 3);
+    if (onConvert) {
+      onConvert(eq);
+    } else {
+      const defaultExpiry = new Date();
+      defaultExpiry.setMonth(defaultExpiry.getMonth() + 3);
 
-    convertEnquiryToMember(eq.id, {
-      name: eq.name,
-      phone: eq.phone,
-      email: eq.email,
-      type: 'Paid',
-      plan: eq.planInterest || 'Cardio Fitness',
-      joinDate: new Date().toISOString().split('T')[0],
-      expiryDate: defaultExpiry.toISOString().split('T')[0],
-      paymentMethod: 'Cash',
-      amountPaid: 4500,
-      status: 'Active',
-      notes: `Converted from lead (${eq.source})`
-    });
+      convertEnquiryToMember(eq.id, {
+        name: eq.name,
+        phone: eq.phone,
+        email: eq.email,
+        type: 'Paid',
+        plan: eq.planInterest || 'Cardio Fitness',
+        joinDate: new Date().toISOString().split('T')[0],
+        expiryDate: defaultExpiry.toISOString().split('T')[0],
+        paymentMethod: 'Cash',
+        amountPaid: 4500,
+        status: 'Active',
+        notes: `Converted from lead (${eq.source})`
+      });
+    }
   };
 
   return (

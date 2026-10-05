@@ -19,7 +19,7 @@ import { SettingsView } from './components/settings/SettingsView';
 import { useAuth } from './context/AuthContext';
 import { SignInView } from './components/auth/SignInView';
 
-import type { Member } from './types';
+import type { Member, Enquiry } from './types';
 
 const MainAppContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -30,6 +30,7 @@ const MainAppContent: React.FC = () => {
   const [isAddEnquiryOpen, setIsAddEnquiryOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [convertingEnquiry, setConvertingEnquiry] = useState<Enquiry | null>(null);
 
   if (!isAuthenticated) {
     return <SignInView />;
@@ -62,6 +63,10 @@ const MainAppContent: React.FC = () => {
               onOpenAddModal={() => setIsAddEnquiryOpen(true)}
               isAddModalOpen={isAddEnquiryOpen}
               onCloseAddModal={() => setIsAddEnquiryOpen(false)}
+              onConvert={(eq) => {
+                setConvertingEnquiry(eq);
+                setIsAddMemberOpen(true);
+              }}
             />
           )}
           {activeTab === 'alerts' && (
@@ -82,8 +87,10 @@ const MainAppContent: React.FC = () => {
         onClose={() => {
           setIsAddMemberOpen(false);
           setEditingMember(null);
+          setConvertingEnquiry(null);
         }}
         initialData={editingMember}
+        prefilledEnquiry={convertingEnquiry}
       />
 
       <MemberDetailModal

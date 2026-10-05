@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Phone, Dumbbell, Calendar, Check } from 'lucide-react';
-import type { Member, MemberType, PaymentMethod } from '../../types';
+import type { Member, MemberType, PaymentMethod, Enquiry } from '../../types';
 import { useGym } from '../../context/GymContext';
 import { defaultGymPlans } from '../../utils/initialData';
 import { generateInvoicePDF, generateWhatsAppLink } from '../../utils/pdfGenerator';
@@ -9,14 +9,16 @@ interface AddMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: Member | null;
+  prefilledEnquiry?: Enquiry | null;
 }
 
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   isOpen,
   onClose,
-  initialData
+  initialData,
+  prefilledEnquiry
 }) => {
-  const { addMember, updateMember, profile } = useGym();
+  const { addMember, updateMember, convertEnquiryToMember, profile } = useGym();
 
   const availablePlans = profile.plans && profile.plans.length > 0 ? profile.plans : defaultGymPlans;
 
@@ -54,6 +56,23 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
       setAmountPaid(initialData.amountPaid);
       setNotes(initialData.notes || '');
       setGender(initialData.gender || 'Male');
+    } else if (prefilledEnquiry) {
+      setName(prefilledEnquiry.name);
+      setPhone(prefilledEnquiry.phone);
+      setEmail(prefilledEnquiry.email || '');
+      setType('Paid');
+      const foundPlan = availablePlans.find(p => p.name.toLowerCase().includes((prefilledEnquiry.planInterest || '').toLowerCase()));
+      if (foundPlan) {
+        setSelectedPlanId(foundPlan.id);
+        setPlanName(foundPlan.name);
+        setAmountPaid(foundPlan.pricesByDuration?.[3] || (foundPlan.monthlyPrice * 3));
+      }
+      setJoinDate(todayStr);
+      setDurationMonths(3);
+      setExpiryDate(defaultExpiryStr);
+      setPaymentMethod('Cash');
+      setNotes(`Converted from lead (${prefilledEnquiry.source})`);
+      setGender('Male');
     } else if (isOpen) {
       setName('');
       setPhone('+91 ');
@@ -122,6 +141,21 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         expiryDate,
         paymentMethod,
         amountPaid: finalAmount,
+        notes,
+        gender
+      });
+    } else if (prefilledEnquiry) {
+      convertEnquiryToMember(prefilledEnquiry.id, {
+        name,
+        phone,
+        email,
+        type,
+        plan: finalPlanName,
+        joinDate,
+        expiryDate,
+        paymentMethod,
+        amountPaid: finalAmount,
+        status: new Date(expiryDate) >= new Date() ? 'Active' : 'Expired',
         notes,
         gender
       });
