@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Receipt, Plus, Trash2, Calendar, DollarSign, X } from 'lucide-react';
+import { Receipt, Plus, Trash2, Calendar, DollarSign, X, Edit2 } from 'lucide-react';
 import { useGym } from '../../context/GymContext';
 import type { ExpenseCategory } from '../../types';
 
 export const ExpensesView: React.FC = () => {
-  const { expenses, addExpense, deleteExpense, stats } = useGym();
+  const { expenses, addExpense, updateExpense, deleteExpense, stats } = useGym();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('Utilities');
@@ -17,16 +18,16 @@ export const ExpensesView: React.FC = () => {
     e.preventDefault();
     if (!title.trim() || amount <= 0) return;
 
-    addExpense({
-      title,
-      category,
-      amount,
-      date,
-      notes
-    });
+    if (editingExpenseId) {
+      updateExpense(editingExpenseId, { title, category, amount, date, notes });
+    } else {
+      addExpense({ title, category, amount, date, notes });
+    }
 
     setTitle('');
     setAmount(1000);
+    setNotes('');
+    setEditingExpenseId(null);
     setIsModalOpen(false);
   };
 
@@ -74,7 +75,15 @@ export const ExpensesView: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setTitle('');
+            setAmount(1000);
+            setNotes('');
+            setDate(new Date().toISOString().split('T')[0]);
+            setCategory('Utilities');
+            setEditingExpenseId(null);
+            setIsModalOpen(true);
+          }}
           className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-glow-orange flex items-center gap-1.5 transition-all"
         >
           <Plus className="w-4 h-4" />
@@ -87,8 +96,10 @@ export const ExpensesView: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-[#0c1017]/80 backdrop-blur-sm flex items-center justify-center p-4 select-none">
           <div className="w-full max-w-md bg-[#0f1624] border border-[#22324b] rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#22324b]">
-              <h3 className="text-base font-extrabold text-white">Record New Expense</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-1.5 text-[#8e9db5] hover:text-white">
+              <h3 className="text-base font-extrabold text-white">
+                {editingExpenseId ? 'Edit Expense' : 'Record New Expense'}
+              </h3>
+              <button onClick={() => { setIsModalOpen(false); setEditingExpenseId(null); }} className="p-1.5 text-[#8e9db5] hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -149,7 +160,7 @@ export const ExpensesView: React.FC = () => {
               <div className="pt-3 flex justify-end gap-3 border-t border-[#22324b]">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); setEditingExpenseId(null); }}
                   className="px-4 py-2 rounded-xl text-[#8e9db5] hover:text-white bg-[#162032] border border-[#22324b]"
                 >
                   Cancel
@@ -158,7 +169,7 @@ export const ExpensesView: React.FC = () => {
                   type="submit"
                   className="px-6 py-2 rounded-xl text-slate-950 font-bold bg-orange-500 hover:bg-orange-400 shadow-glow-orange"
                 >
-                  Save Expense
+                  {editingExpenseId ? 'Save Changes' : 'Save Expense'}
                 </button>
               </div>
             </form>
@@ -195,7 +206,22 @@ export const ExpensesView: React.FC = () => {
                     <td className="py-3.5 px-5 text-right font-mono font-bold text-orange-400 text-sm">
                       ₹{exp.amount.toLocaleString()}
                     </td>
-                    <td className="py-3.5 px-5 text-right">
+                    <td className="py-3.5 px-5 text-right flex justify-end items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setTitle(exp.title);
+                          setCategory(exp.category);
+                          setAmount(exp.amount);
+                          setDate(exp.date);
+                          setNotes(exp.notes || '');
+                          setEditingExpenseId(exp.id);
+                          setIsModalOpen(true);
+                        }}
+                        className="p-1.5 text-[#8e9db5] hover:text-white"
+                        title="Edit Expense"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => {
                           if (window.confirm("Delete this expense (Created by mistake)?\n\nThis will remove the expense and update your total profit.")) {

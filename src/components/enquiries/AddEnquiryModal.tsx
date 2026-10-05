@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { X, MessageSquare } from 'lucide-react';
 import { useGym } from '../../context/GymContext';
 
+import type { Enquiry } from '../../types';
+
 interface AddEnquiryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialData?: Enquiry | null;
 }
 
-export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClose }) => {
-  const { addEnquiry } = useGym();
+export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClose, initialData }) => {
+  const { addEnquiry, updateEnquiry } = useGym();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('+91');
@@ -19,7 +22,15 @@ export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClos
   const [notes, setNotes] = useState('');
 
   React.useEffect(() => {
-    if (isOpen) {
+    if (initialData) {
+      setName(initialData.name);
+      setPhone(initialData.phone);
+      setEmail(initialData.email || '');
+      setPlanInterest(initialData.planInterest || 'Cardio Fitness');
+      setSource(initialData.source as any);
+      setFollowUpDate(initialData.followUpDate || '');
+      setNotes(initialData.notes || '');
+    } else if (isOpen) {
       setName('');
       setPhone('+91 ');
       setEmail('');
@@ -28,7 +39,7 @@ export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClos
       setFollowUpDate('');
       setNotes('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -36,16 +47,28 @@ export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClos
     e.preventDefault();
     if (!name.trim() || !phone.trim()) return;
 
-    addEnquiry({
-      name,
-      phone,
-      email,
-      planInterest,
-      source,
-      status: 'New',
-      followUpDate: followUpDate || undefined,
-      notes
-    });
+    if (initialData) {
+      updateEnquiry(initialData.id, {
+        name,
+        phone,
+        email,
+        planInterest,
+        source,
+        followUpDate: followUpDate || undefined,
+        notes
+      });
+    } else {
+      addEnquiry({
+        name,
+        phone,
+        email,
+        planInterest,
+        source,
+        status: 'New',
+        followUpDate: followUpDate || undefined,
+        notes
+      });
+    }
 
     setName('');
     setPhone('+91');
@@ -61,7 +84,9 @@ export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClos
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">Record Prospect Enquiry</h3>
+              <h3 className="text-base font-extrabold text-white">
+                {initialData ? 'Edit Prospect Enquiry' : 'Record Prospect Enquiry'}
+              </h3>
               <p className="text-xs text-[#8e9db5]">Capture new walk-in or social media lead</p>
             </div>
           </div>
@@ -155,7 +180,7 @@ export const AddEnquiryModal: React.FC<AddEnquiryModalProps> = ({ isOpen, onClos
               type="submit"
               className="px-6 py-2 rounded-xl font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 shadow-glow-orange transition-all"
             >
-              Save Lead
+              {initialData ? 'Save Changes' : 'Save Lead'}
             </button>
           </div>
         </form>

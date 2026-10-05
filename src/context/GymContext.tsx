@@ -49,6 +49,7 @@ interface GymContextType {
   
   enquiries: Enquiry[];
   addEnquiry: (enquiryData: Omit<Enquiry, 'id' | 'createdAt'>) => void;
+  updateEnquiry: (id: string, updated: Partial<Enquiry>) => void;
   updateEnquiryStatus: (id: string, status: EnquiryStatus, notes?: string) => void;
   deleteEnquiry: (id: string) => void;
   convertEnquiryToMember: (enquiryId: string, memberData: Omit<Member, 'id'>) => void;
@@ -58,6 +59,7 @@ interface GymContextType {
   
   expenses: Expense[];
   addExpense: (expense: Omit<Expense, 'id'>) => void;
+  updateExpense: (id: string, updated: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
   
   staff: StaffMember[];
@@ -394,6 +396,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateMember = (id: string, updated: Partial<Member>) => {
+    const oldMember = members.find((m) => m.id === id);
     setMembers((prev) =>
       prev.map((m) => {
         if (m.id === id) {
@@ -404,6 +407,28 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return m;
       })
     );
+
+    if (oldMember) {
+      setPayments((prev) =>
+        prev.map((p) => {
+          if (p.memberId === id) {
+            let newP = { ...p };
+            if (updated.name && updated.name !== oldMember.name) {
+              newP.memberName = updated.name;
+            }
+            // Update the payment record if it matches the joining date
+            if (p.date === oldMember.joinDate) {
+              if (updated.amountPaid !== undefined) newP.amount = updated.amountPaid;
+              if (updated.plan !== undefined) newP.plan = updated.plan;
+              if (updated.paymentMethod !== undefined) newP.paymentMethod = updated.paymentMethod;
+              if (updated.joinDate !== undefined) newP.date = updated.joinDate;
+            }
+            return newP;
+          }
+          return p;
+        })
+      );
+    }
   };
 
   const deleteMember = (id: string, reversePayments: boolean = false) => {
@@ -469,6 +494,10 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logActivity('enquiry', newEnquiry.name, `new enquiry via ${newEnquiry.source}`, 'enquiry');
   };
 
+  const updateEnquiry = (id: string, updated: Partial<Enquiry>) => {
+    setEnquiries((prev) => prev.map((eq) => (eq.id === id ? { ...eq, ...updated } : eq)));
+  };
+
   const updateEnquiryStatus = (id: string, status: EnquiryStatus, notes?: string) => {
     setEnquiries((prev) =>
       prev.map((eq) => (eq.id === id ? { ...eq, status, notes: notes || eq.notes } : eq))
@@ -502,6 +531,10 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setExpenses((prev) => [newExpense, ...prev]);
     logActivity('expense', 'Expense Recorded', `${newExpense.title} — ₹${newExpense.amount.toLocaleString()}`, 'expense');
+  };
+
+  const updateExpense = (id: string, updated: Partial<Expense>) => {
+    setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, ...updated } : e)));
   };
 
   const deleteExpense = (id: string) => {
@@ -674,6 +707,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         renewMember,
         enquiries,
         addEnquiry,
+        updateEnquiry,
         updateEnquiryStatus,
         deleteEnquiry,
         convertEnquiryToMember,
@@ -681,6 +715,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addPayment,
         expenses,
         addExpense,
+        updateExpense,
         deleteExpense,
         staff,
         addStaff,

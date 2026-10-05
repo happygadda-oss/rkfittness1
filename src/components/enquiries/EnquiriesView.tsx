@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Plus, Trash2, CheckCircle2, UserPlus, Search } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, CheckCircle2, UserPlus, Search, Edit2 } from 'lucide-react';
 import { useGym } from '../../context/GymContext';
 import type { Enquiry } from '../../types';
 import { AddEnquiryModal } from './AddEnquiryModal';
@@ -20,6 +20,7 @@ export const EnquiriesView: React.FC<EnquiriesViewProps> = ({
   const { enquiries, deleteEnquiry, convertEnquiryToMember } = useGym();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [editingEnquiry, setEditingEnquiry] = useState<Enquiry | null>(null);
 
   const filteredEnquiries = enquiries.filter((e) => {
     const query = searchTerm.toLowerCase();
@@ -57,7 +58,14 @@ export const EnquiriesView: React.FC<EnquiriesViewProps> = ({
 
   return (
     <div className="space-y-4 pb-12">
-      <AddEnquiryModal isOpen={isAddModalOpen} onClose={onCloseAddModal} />
+      <AddEnquiryModal 
+        isOpen={isAddModalOpen || !!editingEnquiry} 
+        onClose={() => {
+          setEditingEnquiry(null);
+          if (isAddModalOpen) onCloseAddModal();
+        }} 
+        initialData={editingEnquiry}
+      />
 
       {/* Top Controls Header */}
       <div className="glass-card rounded-2xl p-5 border border-[#22324b] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -168,6 +176,14 @@ export const EnquiriesView: React.FC<EnquiriesViewProps> = ({
                             <CheckCircle2 className="w-3.5 h-3.5" /> Converted
                           </span>
                         )}
+
+                        <button
+                          onClick={() => setEditingEnquiry(eq)}
+                          className="w-8 h-8 rounded-xl bg-[#0f1624] hover:bg-[#1c2a42] border border-[#22324b] text-[#8e9db5] hover:text-white flex items-center justify-center transition-colors"
+                          title="Edit Lead"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
 
                         <button
                           onClick={() => deleteEnquiry(eq.id)}
