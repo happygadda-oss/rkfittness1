@@ -409,8 +409,10 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (oldMember) {
-      setPayments((prev) =>
-        prev.map((p) => {
+      setPayments((prev) => {
+        let paymentUpdated = false;
+        
+        const nextPayments = prev.map((p) => {
           if (p.memberId === id) {
             let newP = { ...p };
             if (updated.name && updated.name !== oldMember.name) {
@@ -422,12 +424,48 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (updated.plan !== undefined) newP.plan = updated.plan;
               if (updated.paymentMethod !== undefined) newP.paymentMethod = updated.paymentMethod;
               if (updated.joinDate !== undefined) newP.date = updated.joinDate;
+              paymentUpdated = true;
             }
             return newP;
           }
           return p;
-        })
-      );
+        });
+
+        if (!paymentUpdated && updated.amountPaid !== undefined) {
+          const memberPayments = prev.filter(p => p.memberId === id);
+          if (memberPayments.length > 0) {
+            // Update the first payment found if no date match
+            const targetId = memberPayments[0].id;
+            return nextPayments.map(p => {
+              if (p.id === targetId) {
+                return {
+                  ...p,
+                  amount: updated.amountPaid!,
+                  plan: updated.plan !== undefined ? updated.plan : p.plan,
+                  paymentMethod: updated.paymentMethod !== undefined ? updated.paymentMethod : p.paymentMethod,
+                  date: updated.joinDate !== undefined ? updated.joinDate : p.date
+                };
+              }
+              return p;
+            });
+          } else if (updated.amountPaid > 0) {
+            // No payment exists at all, create one
+            const newPayment = {
+              id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+              memberId: id,
+              memberName: updated.name || oldMember.name,
+              amount: updated.amountPaid,
+              plan: updated.plan || oldMember.plan,
+              paymentMethod: updated.paymentMethod || oldMember.paymentMethod,
+              date: updated.joinDate || oldMember.joinDate,
+              formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            return [newPayment, ...nextPayments];
+          }
+        }
+
+        return nextPayments;
+      });
     }
   };
 
