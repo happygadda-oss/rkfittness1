@@ -267,6 +267,37 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearTimeout(timer);
   }, [profile, members, enquiries, payments, expenses, staff, activities, isLoaded, user?.id]);
 
+  // --- AUTO-CORRECT EXPIRY STATUSES ON LOAD OR EDIT ---
+  useEffect(() => {
+    if (!isLoaded || members.length === 0) return;
+    
+    let hasChanges = false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
+    const updatedMembers = members.map(m => {
+      if (!m.expiryDate || m.type === 'Trial') return m;
+      
+      const expDate = new Date(m.expiryDate);
+      expDate.setHours(0, 0, 0, 0);
+      const isActuallyExpired = expDate.getTime() < todayTime;
+      
+      if (isActuallyExpired && m.status !== 'Expired') {
+        hasChanges = true;
+        return { ...m, status: 'Expired' };
+      } else if (!isActuallyExpired && m.status === 'Expired') {
+        hasChanges = true;
+        return { ...m, status: 'Active' };
+      }
+      return m;
+    });
+
+    if (hasChanges) {
+      setMembers(updatedMembers as Member[]);
+    }
+  }, [members, isLoaded]);
+
   const updateSupabaseConfig = (url: string, key: string, autoSync: boolean) => {
     saveSupabaseConfig(url, key, autoSync, userPrefix);
     setSupabaseConfig(getStoredSupabaseConfig(userPrefix));
